@@ -3,16 +3,23 @@ const buscaminas = {
     nMinasEncontradas: 0,
     nFilas: 0,
     nColumnas: 0,
-    campoMinas: []
+    campoMinas: [],
+    banderasColocadas: 0
 }
+
+// Variables para el cronómetro
+let tiempo = 0;
+let intervalo = null;
+// Párrafo de tiempo
+const displayTiempo = document.querySelector('#tiempo');
 
 function pintarTablero(nFilas, nColumnas) {
     const tablero = document.querySelector("#tablero");
     tablero.style.gridTemplateColumns = "repeat(" + nColumnas + ",25px)";
     tablero.style.gridTemplateRows = "repeat(" + nFilas + ",25px)";
 
-    for (let i = 0; i < nColumnas; i++) {
-        for (let j = 0; j < nFilas; j++) {
+    for (let i = 0; i < nFilas; i++) {
+        for (let j = 0; j < nColumnas; j++) {
             const casilla = document.createElement('div');
             casilla.setAttribute("id", "F" + i + "C" + j);
             casilla.addEventListener("contextmenu", marcar);
@@ -70,40 +77,41 @@ function contarMinas() {
 function destaparCasilla(fila, columna) {
     if (fila >= 0 && fila < buscaminas.nFilas && columna >= 0 && columna < buscaminas.nColumnas) {
         let casilla = document.getElementById("F" + fila + "C" + columna);
+
         if (!casilla.classList.contains("destapado")) {
-            if (!casilla.innerHTML.includes('<img class="bandera"')) {
+
+            // Solo procede si NO hay bandera
+            if (!casilla.querySelector('img.bandera')) {
+
                 casilla.classList.add("destapado");
+                casilla.innerHTML = buscaminas.campoMinas[fila][columna];
+                casilla.classList.add("c" + buscaminas.campoMinas[fila][columna]);
 
-            }
-            casilla.innerHTML = buscaminas.campoMinas[fila][columna];
+                if (buscaminas.campoMinas[fila][columna] !== "B") {
+                    if (buscaminas.campoMinas[fila][columna] == 0) {
+                        destaparCasilla(fila - 1, columna - 1);
+                        destaparCasilla(fila - 1, columna);
+                        destaparCasilla(fila - 1, columna + 1);
+                        destaparCasilla(fila, columna - 1);
+                        destaparCasilla(fila + 1, columna - 1);
+                        destaparCasilla(fila + 1, columna);
+                        destaparCasilla(fila + 1, columna + 1);
 
-            casilla.classList.add("c" + buscaminas.campoMinas[fila][columna])
-
-            if (buscaminas.campoMinas[fila][columna] !== "B") {
-                if (buscaminas.campoMinas[fila][columna] == 0) {
-                    destaparCasilla(fila - 1, columna - 1);
-                    destaparCasilla(fila - 1, columna);
-                    destaparCasilla(fila - 1, columna + 1);
-                    destaparCasilla(fila, columna - 1);
-                    destaparCasilla(fila, columna);
-                    destaparCasilla(fila + 1, columna - 1);
-                    destaparCasilla(fila + 1, columna);
-                    destaparCasilla(fila + 1, columna + 1);
-
-                    casilla.innerHTML = "";
+                        casilla.innerHTML = "";
+                    }
+                } else {
+                    casilla.innerHTML = '<img class="explosion" src="IMAGENES/icons/explosion.png">';
+                    resolverTablero(false);
                 }
-            } else {
-                casilla.innerHTML = '<img class="explosion" src="IMAGENES/icons/explosion.png">'
 
-                resolverTablero(false);
             }
-
         }
     }
 }
 
 function inicio() {
     let dificultad = 0;
+    let parrafo = document.querySelector('#parrafo')
     do {
         dificultad = prompt("Introduce la dificultad. 1:Fácil  2:Medio  3:Difícil");
         dificultad = Number(dificultad);
@@ -114,22 +122,26 @@ function inicio() {
             buscaminas.nMinasTot = 10;
             buscaminas.nColumnas = 8;
             buscaminas.nFilas = 8;
+            parrafo.innerHTML += `Fácil<br>Número de minas: ${buscaminas.nMinasTot}`;
             break;
         case 2:
             buscaminas.nMinasTot = 40;
             buscaminas.nColumnas = 16;
             buscaminas.nFilas = 16;
+            parrafo.innerHTML += `Media<br>Número de minas: ${buscaminas.nMinasTot}`;
             break;
         case 3:
             buscaminas.nMinasTot = 99;
             buscaminas.nFilas = 16;
             buscaminas.nColumnas = 30;
+            parrafo.innerHTML += `Difícil<br>Número de minas: ${buscaminas.nMinasTot}`;
             break;
     }
     pintarTablero(buscaminas.nFilas, buscaminas.nColumnas);
     generarCampoMinas();
     esparcirMinas();
     contarMinas();
+    iniciarCronometro();
 }
 
 function resolverTablero(resultado) {
@@ -152,10 +164,11 @@ function resolverTablero(resultado) {
         fila = Number(fila);
         columna = Number(columna);
 
-        if (casillas[i].innerHTML.includes('<img class="bandera"')) {
+        if (casillas[i].querySelector('img.bandera')) {
             casillas[i].classList.add("destapado");
             if (buscaminas.campoMinas[fila][columna] == "B") {
                 casillas[i].innerHTML = '<img class="bomba" src="IMAGENES/icons/bomba.png">';
+                buscaminas.nMinasEncontradas++;
             } else {
                 casillas[i].innerHTML = '<img class="banderaMal" src="IMAGENES/icons/banderaMal.png">';
                 resultado = false;
@@ -169,9 +182,12 @@ function resolverTablero(resultado) {
     }
 
     if (resultado) {
-        alert("FELICIDADES HAS GANADO!")
-
+        document.querySelector('#resultado').innerHTML = `¡Felicidades, has ganado!`
+        alert("¡FELICIDADES, HAS GANADO!")
+    } else {
+        document.querySelector('#resultado').innerHTML = `¡Has encontrado ${buscaminas.nMinasEncontradas} minas!`
     }
+    detenerCronometro();
 }
 
 
@@ -183,17 +199,19 @@ function resolverTablero(resultado) {
 
         if (casilla.innerHTML.includes('<img class="bandera')) {
             casilla.innerHTML = '<img class="duda" src="IMAGENES/icons/interrogacion.png">'
-            buscaminas.nMinasEncontradas--;
+            buscaminas.banderasColocadas--;
         } else if (casilla.innerHTML.includes('<img class="duda')) {
             casilla.innerHTML = "";
-        } else {
+        } else if(buscaminas.banderasColocadas < buscaminas.nMinasTot){
             casilla.innerHTML = '<img class="bandera" src="IMAGENES/icons/bandera.png">'
-            buscaminas.nMinasEncontradas++;
+            buscaminas.banderasColocadas++;
         }
 
         if (buscaminas.nMinasEncontradas == buscaminas.nMinasTot) {
             resolverTablero(true);
         }
+        console.log("Número de banderas", buscaminas.banderasColocadas);
+        actualizarContadorBanderas();
     }
 
     function destapar(e) {
@@ -215,6 +233,40 @@ function resolverTablero(resultado) {
         columna = Number(columna);
 
         destaparCasilla(fila, columna);
+
+        document.querySelector('#reiniciar').style.display = "block";
     }
 
+document.querySelector('#reiniciar').addEventListener('click', () => {
+    location.reload();
+});
+
     window.onload = inicio();
+
+// Cronómetro
+function iniciarCronometro() {
+    tiempo = 0;
+    displayTiempo.textContent = formatTiempo(tiempo);
+
+    intervalo = setInterval(() => {
+        tiempo++;
+        displayTiempo.textContent = formatTiempo(tiempo);
+    }, 1000);
+}
+
+function detenerCronometro() {
+    clearInterval(intervalo);
+}
+
+function formatTiempo(segundos) {
+    // Convierte segundos a mm:ss
+    const minutos = Math.floor(segundos / 60);
+    const segundosRestantes = segundos % 60;
+    return `${String(minutos).padStart(2, '0')}:${String(segundosRestantes).padStart(2, '0')}`;
+}
+
+// Contar banderas
+function actualizarContadorBanderas() {
+    console.log(`Actualizar banderas ${buscaminas.banderasColocadas}`);
+    document.querySelector('#banderas').textContent = `Número de banderas colocadas: ${buscaminas.banderasColocadas}`;
+}
